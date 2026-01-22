@@ -12,6 +12,9 @@ let TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || null;
 const messageCache = new NodeCache({ stdTTL: 86400 }); // 24 jam
 let messageCounter = 0;
 
+// Cache untuk conversation state (waiting for reply)
+const conversationState = new NodeCache({ stdTTL: 600 }); // 10 menit
+
 // Initialize WhatsApp Client
 const waClient = new Client({
     authStrategy: new LocalAuth({
@@ -91,19 +94,20 @@ waClient.on('message', async (msg) => {
             return;
         }
 
-        // Inline keyboard dengan quick reply langsung
+        // Inline keyboard dengan tombol balas dan quick templates
         const keyboard = {
             inline_keyboard: [
+                [
+                    { text: '💬 Balas', callback_data: `reply_${msgId}` }
+                ],
                 [
                     { text: '✅ Oke', callback_data: `quickreply_${msgId}_Oke` },
                     { text: '👍 Siap', callback_data: `quickreply_${msgId}_Siap` }
                 ],
                 [
-                    { text: '🙏 Terima kasih', callback_data: `quickreply_${msgId}_Terima kasih` },
-                    { text: '⏳ Tunggu', callback_data: `quickreply_${msgId}_Tunggu sebentar ya` }
+                    { text: '🙏 Terima kasih', callback_data: `quickreply_${msgId}_Terima kasih` }
                 ],
                 [
-                    { text: '✍️ Custom', callback_data: `custom_${msgId}` },
                     { text: '📞 Info', callback_data: `info_${msgId}` }
                 ]
             ]
@@ -185,7 +189,7 @@ async function replyToWhatsApp(msgId, replyText, ctx) {
         console.log(`✉️ Reply sent to ${msgData.contactName}`);
 
     } catch (error) {
-        console.error('Error sending reply:', error);
+        console.error('Error sending reply:', error.message);
         await ctx.reply('❌ Gagal mengirim pesan. Pastikan WhatsApp masih terhubung.');
     }
 }
@@ -325,7 +329,7 @@ bot.on('callback_query', async (ctx) => {
     const data = ctx.callbackQuery.data;
     
     if (data.startsWith('reply_')) {
-        // Quick reply button
+        // Tombol "Balas" - masuk conversation mode
         const msgId = data.replace('reply_', '');
         const msgData = messageCache.get(msgId);
         
@@ -333,27 +337,16 @@ bot.on('callback_query', async (ctx) => {
             return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
         }
         
-        // Show reply options
-        const replyKeyboard = {
-            inline_keyboard: [
-                [
-                    { text: '✅ Oke', callback_data: `quickreply_${msgId}_Oke` },
-                    { text: '👍 Siap', callback_data: `quickreply_${msgId}_Siap` }
-                ],
-                [
-                    { text: '🙏 Terima kasih', callback_data: `quickreply_${msgId}_Terima kasih` },
-                    { text: '⏳ Tunggu', callback_data: `quickreply_${msgId}_Tunggu sebentar ya` }
-                ],
-                [
-                    { text: '✍️ Custom Reply', callback_data: `custom_${msgId}` }
-                ]
-            ]
-        };
+        // Set conversation state
+        conversationState.set(`chat_${ctx.from.id}`, {
+            mode: 'waiting_reply',
+            msgId: msgId,
+            contactName: msgData.contactName
+        });
         
         await ctx.answerCbQuery();
-        await ctx.reply(`💬 *Quick Reply ke ${msgData.contactName}*\n\nPilih template atau custom reply:`, {
-            parse_mode: 'Markdown',
-            reply_markup: replyKeyboard
+        await ctx.reply(`💬 *Balas ke: ${msgData.contactName}*\n\n✍️ Ketik pesan Anda (atau /cancel untuk batal):`, {
+            parse_mode: 'Markdown'
         });
         
     } else if (data.startsWith('info_')) {
@@ -447,6 +440,54 @@ bot.on('callback_query', async (ctx) => {
         }, {
             caption: `📇 Contact: ${msgData.contactName}\n📞 +${phoneNumber}`
         });
+    }
+});
+
+// Handle text messages (untuk conversation mode)
+bot.on('text', async (ctx) => {
+    // Check if user is in conversation mode
+    const state = conversationState.get(`chat_${ctx.from.id}`);
+    
+    if (state && state.mode === 'waiting_reply') {
+        const msgData = messageCache.get(state.msgId);
+        
+        if (!msgData) {
+            conversationState.del(`chat_${ctx.from.id}`);
+            return ctx.reply('❌ Pesan sudah expired.');
+        }
+        
+        // Get user's message
+        const replyText = ctx.message.text;
+        
+        try {
+            // Send to WhatsApp
+            await waClient.sendMessage(msgData.contactId, replyText);
+            
+            await ctx.reply(`✅ Pesan terkirim ke *${msgData.contactName}*\n\n💬 "${replyText}"`, {
+                parse_mode: 'Markdown'
+            });
+            
+            console.log(`✉️ Reply sent to ${msgData.contactName}`);
+            
+        } catch (error) {
+            console.error('Error sending message:', error.message);
+            await ctx.reply('❌ Gagal mengirim pesan.');
+        }
+        
+        // Clear conversation state
+        conversationState.del(`chat_${ctx.from.id}`);
+    }
+});
+
+// Command /cancel
+bot.command('cancel', async (ctx) => {
+    const state = conversationState.get(`chat_${ctx.from.id}`);
+    
+    if (state) {
+        conversationState.del(`chat_${ctx.from.id}`);
+        await ctx.reply('✅ Reply dibatalkan.');
+    } else {
+        await ctx.reply('Tidak ada aksi yang perlu dibatalkan.');
     }
 });
 
