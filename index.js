@@ -91,11 +91,19 @@ waClient.on('message', async (msg) => {
             return;
         }
 
-        // Inline keyboard untuk quick actions
+        // Inline keyboard dengan quick reply langsung
         const keyboard = {
             inline_keyboard: [
                 [
-                    { text: '💬 Reply', callback_data: `reply_${msgId}` },
+                    { text: '✅ Oke', callback_data: `quickreply_${msgId}_Oke` },
+                    { text: '👍 Siap', callback_data: `quickreply_${msgId}_Siap` }
+                ],
+                [
+                    { text: '🙏 Terima kasih', callback_data: `quickreply_${msgId}_Terima kasih` },
+                    { text: '⏳ Tunggu', callback_data: `quickreply_${msgId}_Tunggu sebentar ya` }
+                ],
+                [
+                    { text: '✍️ Custom', callback_data: `custom_${msgId}` },
                     { text: '📞 Info', callback_data: `info_${msgId}` }
                 ]
             ]
