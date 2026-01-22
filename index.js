@@ -45,6 +45,8 @@ let messageCounter = 0;
 
 // Cache untuk conversation state (waiting for reply)
 const conversationState = new NodeCache({ stdTTL: 600 }); // 10 menit
+// Cooldown map untuk auto-reply
+const autoReplyCooldown = new Map();
 
 // Initialize WhatsApp Client
 const waClient = new Client({
