@@ -80,12 +80,9 @@ waClient.on('message', async (msg) => {
             timestamp: Date.now()
         });
 
-        // Format pesan untuk Telegram
-        let telegramMessage = `📩 *Pesan Baru*\n`;
-        telegramMessage += `👤 Dari: ${chatName}\n`;
-        telegramMessage += `📞 ID: ${msg.from}\n`;
-        telegramMessage += `🆔 Msg ID: \`${msgId}\`\n`;
-        telegramMessage += `⏰ ${new Date().toLocaleString('id-ID')}\n`;
+        // Format pesan untuk Telegram - SIMPLE VERSION
+        let telegramMessage = `📨 *${chatName}*\n`;
+        telegramMessage += `🆔 \`${msgId}\`\n`;
         telegramMessage += `─────────────────\n`;
         telegramMessage += msg.body || '[Media/File]';
 
@@ -112,26 +109,26 @@ waClient.on('message', async (msg) => {
                         await bot.telegram.sendPhoto(TELEGRAM_CHAT_ID, {
                             source: buffer
                         }, {
-                            caption: `📷 Dari: ${chatName}\n🆔 Msg ID: ${msgId}`
+                            caption: `📷 ${chatName} | ${msgId}`
                         });
                     } else if (media.mimetype.startsWith('video/')) {
                         await bot.telegram.sendVideo(TELEGRAM_CHAT_ID, {
                             source: buffer
                         }, {
-                            caption: `🎥 Dari: ${chatName}\n🆔 Msg ID: ${msgId}`
+                            caption: `🎥 ${chatName} | ${msgId}`
                         });
                     } else if (media.mimetype.startsWith('audio/')) {
                         await bot.telegram.sendAudio(TELEGRAM_CHAT_ID, {
                             source: buffer
                         }, {
-                            caption: `🎵 Dari: ${chatName}\n🆔 Msg ID: ${msgId}`
+                            caption: `🎵 ${chatName} | ${msgId}`
                         });
                     } else {
                         await bot.telegram.sendDocument(TELEGRAM_CHAT_ID, {
                             source: buffer,
                             filename: media.filename || 'file'
                         }, {
-                            caption: `📎 Dari: ${chatName}\n🆔 Msg ID: ${msgId}`
+                            caption: `📎 ${chatName} | ${msgId}`
                         });
                     }
                 }
