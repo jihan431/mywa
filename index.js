@@ -740,3 +740,16 @@ bot.launch().then(() => {
     console.log('Scan QR code untuk koneksi WhatsApp');
     console.log('Kirim /start ke bot Telegram untuk mulai');
 });
+
+// Graceful shutdown
+process.once('SIGINT', () => {
+    console.log('Stopping bot...');
+    bot.stop('SIGINT');
+    waClient.destroy();
+});
+
+process.once('SIGTERM', () => {
+    console.log('Stopping bot...');
+    bot.stop('SIGTERM');
+    waClient.destroy();
+});
