@@ -91,9 +91,20 @@ waClient.on('message', async (msg) => {
             return;
         }
 
-        // Kirim pesan ke Telegram
+        // Inline keyboard untuk quick actions
+        const keyboard = {
+            inline_keyboard: [
+                [
+                    { text: '💬 Reply', callback_data: `reply_${msgId}` },
+                    { text: '📞 Info', callback_data: `info_${msgId}` }
+                ]
+            ]
+        };
+
+        // Kirim pesan ke Telegram dengan keyboard
         await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, telegramMessage, {
-            parse_mode: 'Markdown'
+            parse_mode: 'Markdown',
+            reply_markup: keyboard
         });
 
         // Handle media (gambar, video, dokumen, dll)
@@ -296,6 +307,138 @@ bot.command('send', async (ctx) => {
     } catch (error) {
         console.error('Error sending message:', error);
         await ctx.reply('❌ Gagal mengirim pesan.\n\nPastikan:\n• Nomor dalam format internasional (628xxx)\n• WhatsApp terhubung\n• Nomor valid');
+    }
+});
+
+// ==================== Inline Button Handlers ====================
+
+// Handle callback query (inline button clicks)
+bot.on('callback_query', async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    
+    if (data.startsWith('reply_')) {
+        // Quick reply button
+        const msgId = data.replace('reply_', '');
+        const msgData = messageCache.get(msgId);
+        
+        if (!msgData) {
+            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
+        }
+        
+        // Show reply options
+        const replyKeyboard = {
+            inline_keyboard: [
+                [
+                    { text: '✅ Oke', callback_data: `quickreply_${msgId}_Oke` },
+                    { text: '👍 Siap', callback_data: `quickreply_${msgId}_Siap` }
+                ],
+                [
+                    { text: '🙏 Terima kasih', callback_data: `quickreply_${msgId}_Terima kasih` },
+                    { text: '⏳ Tunggu', callback_data: `quickreply_${msgId}_Tunggu sebentar ya` }
+                ],
+                [
+                    { text: '✍️ Custom Reply', callback_data: `custom_${msgId}` }
+                ]
+            ]
+        };
+        
+        await ctx.answerCbQuery();
+        await ctx.reply(`💬 *Quick Reply ke ${msgData.contactName}*\n\nPilih template atau custom reply:`, {
+            parse_mode: 'Markdown',
+            reply_markup: replyKeyboard
+        });
+        
+    } else if (data.startsWith('info_')) {
+        // Contact info button
+        const msgId = data.replace('info_', '');
+        const msgData = messageCache.get(msgId);
+        
+        if (!msgData) {
+            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
+        }
+        
+        // Format contact info
+        const contactInfo = `📇 *Info Kontak*\n\n` +
+            `👤 Nama: ${msgData.contactName}\n` +
+            `📞 ID: \`${msgData.contactId}\`\n` +
+            `📁 Type: ${msgData.isGroup ? 'Group' : 'Personal'}\n` +
+            `⏰ Pesan diterima: ${new Date(msgData.timestamp).toLocaleString('id-ID')}\n` +
+            `🆔 Msg ID: \`${msgId}\`\n\n` +
+            `_Gunakan /send ${msgData.contactId.replace('@c.us', '')} untuk kirim pesan baru_`;
+        
+        // Share contact button
+        const contactKeyboard = {
+            inline_keyboard: [
+                [
+                    { text: '💬 Reply', callback_data: `reply_${msgId}` },
+                    { text: '📤 Share Contact', callback_data: `share_${msgId}` }
+                ]
+            ]
+        };
+        
+        await ctx.answerCbQuery();
+        await ctx.reply(contactInfo, {
+            parse_mode: 'Markdown',
+            reply_markup: contactKeyboard
+        });
+        
+    } else if (data.startsWith('quickreply_')) {
+        // Send quick reply
+        const parts = data.replace('quickreply_', '').split('_');
+        const msgId = parts[0];
+        const replyText = parts.slice(1).join('_');
+        
+        const msgData = messageCache.get(msgId);
+        
+        if (!msgData) {
+            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
+        }
+        
+        try {
+            await waClient.sendMessage(msgData.contactId, replyText);
+            await ctx.answerCbQuery('✅ Pesan terkirim!');
+            await ctx.reply(`✅ Reply terkirim ke *${msgData.contactName}*\n💬 "${replyText}"`, {
+                parse_mode: 'Markdown'
+            });
+            console.log(`✉️ Quick reply sent to ${msgData.contactName}`);
+        } catch (error) {
+            console.error('Error sending quick reply:', error);
+            await ctx.answerCbQuery('❌ Gagal mengirim!', { show_alert: true });
+        }
+        
+    } else if (data.startsWith('custom_')) {
+        // Custom reply - instruct user to use /reply command
+        const msgId = data.replace('custom_', '');
+        const msgData = messageCache.get(msgId);
+        
+        if (!msgData) {
+            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
+        }
+        
+        await ctx.answerCbQuery();
+        await ctx.reply(`✍️ Untuk custom reply, gunakan:\n\n\`/reply ${msgId} [pesan Anda]\`\n\nContoh:\n\`/reply ${msgId} Halo, terima kasih pesannya!\``, {
+            parse_mode: 'Markdown'
+        });
+        
+    } else if (data.startsWith('share_')) {
+        // Share contact as vCard
+        const msgId = data.replace('share_', '');
+        const msgData = messageCache.get(msgId);
+        
+        if (!msgData) {
+            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
+        }
+        
+        const phoneNumber = msgData.contactId.replace('@c.us', '');
+        const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${msgData.contactName}\nTEL;TYPE=CELL:+${phoneNumber}\nEND:VCARD`;
+        
+        await ctx.answerCbQuery();
+        await ctx.replyWithDocument({
+            source: Buffer.from(vcard),
+            filename: `${msgData.contactName}.vcf`
+        }, {
+            caption: `📇 Contact: ${msgData.contactName}\n📞 +${phoneNumber}`
+        });
     }
 });
 
