@@ -98,7 +98,9 @@ waClient.on('message', async (msg) => {
         // Auto reply jika enabled
         if (config.auto_reply.enabled && config.auto_reply.message) {
             try {
-                await waClient.sendMessage(msg.from, config.auto_reply.message, { sendSeen: false });
+                // Add [Auto Reply] tag
+                const autoReplyText = `[Auto Reply]\n${config.auto_reply.message}`;
+                await waClient.sendMessage(msg.from, autoReplyText, { sendSeen: false });
                 console.log(`Auto-reply sent to ${msg.from}`);
             } catch (error) {
                 console.error('Error sending auto-reply:', error.message);
@@ -366,7 +368,7 @@ bot.command('auto', async (ctx) => {
     const args = ctx.message.text.split(' ');
     
     if (args.length < 2) {
-        return ctx.reply('Format salah!\n\nGunakan: /auto <pesan auto reply>\n\nContoh: /auto Maaf sedang sibuk, akan dibalas nanti');
+        return ctx.reply('Format: /auto <pesan>');
     }
     
     const autoReplyMessage = args.slice(1).join(' ');
@@ -375,31 +377,27 @@ bot.command('auto', async (ctx) => {
     config.auto_reply.message = autoReplyMessage;
     saveConfig();
     
-    await ctx.reply(`Auto reply diaktifkan\n\nPesan: "${autoReplyMessage}"\n\nSemua pesan WhatsApp masuk akan otomatis dibalas dengan pesan ini.`, {
-        parse_mode: 'Markdown'
-    });
+    await ctx.reply(`[Auto Reply] Aktif\nPesan: ${autoReplyMessage}`);
 });
 
 // Command /stopauto - Stop auto reply
 bot.command('stopauto', async (ctx) => {
     if (!config.auto_reply.enabled) {
-        return ctx.reply('Auto reply sudah tidak aktif');
+        return ctx.reply('Auto reply sudah mati');
     }
     
     config.auto_reply.enabled = false;
     saveConfig();
     
-    await ctx.reply('Auto reply dinonaktifkan');
+    await ctx.reply('Auto reply dimatikan');
 });
 
 // Command /statusauto - Check auto reply status
 bot.command('statusauto', async (ctx) => {
     if (config.auto_reply.enabled) {
-        await ctx.reply(`Auto reply: AKTIF\n\nPesan: "${config.auto_reply.message}"`, {
-            parse_mode: 'Markdown'
-        });
+        await ctx.reply(`[Auto Reply] Aktif\nPesan: ${config.auto_reply.message}`);
     } else {
-        await ctx.reply('Auto reply: TIDAK AKTIF');
+        await ctx.reply('[Auto Reply] Mati');
     }
 });
 
