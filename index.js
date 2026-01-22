@@ -65,29 +65,29 @@ const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 // ==================== WhatsApp Events ====================
 
 waClient.on('qr', (qr) => {
-    console.log('📱 Scan QR Code di bawah ini dengan WhatsApp:');
+    console.log('Scan QR Code di bawah ini dengan WhatsApp:');
     qrcode.generate(qr, { small: true });
 });
 
 waClient.on('ready', () => {
-    console.log('✅ WhatsApp Connected!');
+    console.log('WhatsApp Connected!');
     if (TELEGRAM_CHAT_ID) {
-        bot.telegram.sendMessage(TELEGRAM_CHAT_ID, '✅ WhatsApp Connected! Bot siap digunakan.');
+        bot.telegram.sendMessage(TELEGRAM_CHAT_ID, 'WhatsApp Connected! Bot siap digunakan.');
     }
 });
 
 waClient.on('authenticated', () => {
-    console.log('✅ WhatsApp Authenticated');
+    console.log('WhatsApp Authenticated');
 });
 
 waClient.on('auth_failure', (msg) => {
-    console.error('❌ WhatsApp Authentication Failed:', msg);
+    console.error('WhatsApp Authentication Failed:', msg);
 });
 
 waClient.on('disconnected', (reason) => {
-    console.log('❌ WhatsApp Disconnected:', reason);
+    console.log('WhatsApp Disconnected:', reason);
     if (TELEGRAM_CHAT_ID) {
-        bot.telegram.sendMessage(TELEGRAM_CHAT_ID, `❌ WhatsApp Disconnected: ${reason}`);
+        bot.telegram.sendMessage(TELEGRAM_CHAT_ID, `WhatsApp Disconnected: ${reason}`);
     }
 });
 
@@ -142,7 +142,7 @@ waClient.on('message', async (msg) => {
         let telegramMessage = `*${chatName}*\n\n${msg.body || '[Media/File]'}`;
 
         if (!TELEGRAM_CHAT_ID) {
-            console.log('⚠️ TELEGRAM_CHAT_ID belum diset. Gunakan /start di bot Telegram.');
+            console.log('TELEGRAM_CHAT_ID belum diset. Gunakan /start di bot Telegram.');
             return;
         }
 
@@ -199,11 +199,11 @@ waClient.on('message', async (msg) => {
                 }
             } catch (error) {
                 console.error('Error downloading media:', error);
-                await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, `⚠️ Gagal download media dari ${chatName}`);
+                await bot.telegram.sendMessage(TELEGRAM_CHAT_ID, `Gagal download media dari ${chatName}`);
             }
         }
 
-        console.log(`📨 Forwarded message from ${chatName} to Telegram (${msgId})`);
+        console.log(`Forwarded message from ${chatName} to Telegram`);
 
     } catch (error) {
         console.error('Error handling WhatsApp message:', error);
@@ -218,7 +218,7 @@ async function replyToWhatsApp(msgId, replyText, ctx) {
         const msgData = messageCache.get(msgId);
         
         if (!msgData) {
-            return ctx.reply('❌ Message ID tidak ditemukan atau sudah expired.\nGunakan /list untuk melihat pesan terbaru.');
+            return ctx.reply('Message ID tidak ditemukan atau sudah expired.\nGunakan /list untuk melihat pesan terbaru.');
         }
 
         // Kirim pesan ke WhatsApp (disable read receipts to avoid errors)
@@ -248,7 +248,7 @@ bot.command('start', async (ctx) => {
 
     const welcomeMsg = `*WhatsApp-Telegram Bridge*\n\n` +
         `Bot ini auto-forward semua pesan WhatsApp ke sini.\n` +
-        `Klik tombol di bawah untuk quick access:`;
+        `Klik tombol di bawah untuk akses cepat:`;
     
     const keyboard = {
         inline_keyboard: [
@@ -272,24 +272,24 @@ bot.command('start', async (ctx) => {
 });
 
 // Command /help
+// Command /help
 bot.command('help', async (ctx) => {
-    const helpMsg = `📖 *Bantuan WhatsApp-Telegram Bridge*\n\n` +
-        `*Format Commands:*\n\n` +
-        `1️⃣ *Balas Pesan WA*\n` +
-        `   /reply <msg_id> <pesan>\n` +
-        `   Contoh: /reply msg_5 Terima kasih atas pesannya!\n\n` +
-        `2️⃣ *Kirim Pesan Baru*\n` +
-        `   /send <nomor> <pesan>\n` +
-        `   Contoh: /send 628123456789 Halo!\n` +
-        `   Format nomor: 628xxx (dengan kode negara)\n\n` +
-        `3️⃣ *Lihat Pesan Terakhir*\n` +
-        `   /list - Menampilkan 10 pesan terakhir\n\n` +
-        `4️⃣ *Cek Status*\n` +
-        `   /status - Status koneksi WhatsApp\n\n` +
-        `*Tips:*\n` +
-        `• Setiap pesan yang masuk akan otomatis di-forward ke sini\n` +
-        `• Copy Msg ID dari pesan yang masuk untuk reply\n` +
-        `• Media (foto, video, file) juga otomatis di-forward`;
+    const helpMsg = `*Bantuan WhatsApp-Telegram Bridge*\n\n` +
+        `*Commands:*\n\n` +
+        `*Balas Pesan WA*\n` +
+        `   Klik tombol [Balas] di bawah pesan\n` +
+        `   Atau: /reply <msg_id> <pesan>\n\n` +
+        `*Kirim Pesan Baru*\n` +
+        `   /send - Buka daftar kontak\n\n` +
+        `*Lihat Pesan Terakhir*\n` +
+        `   /list - Tampilkan 10 pesan terakhir\n\n` +
+        `*Auto Reply*\n` +
+        `   /auto <pesan> - Aktifkan auto reply\n` +
+        `   /stopauto - Matikan auto reply\n\n` +
+        `*Status*\n` +
+        `   /status - Cek koneksi\n\n` +
+        `*System*\n` +
+        `   Forwarding otomatis (Text, Foto, Video, File)`;
 
     await ctx.reply(helpMsg, { parse_mode: 'Markdown' });
 });
@@ -299,8 +299,8 @@ bot.command('status', async (ctx) => {
     const waState = await waClient.getState();
     const isConnected = waState === 'CONNECTED';
     
-    const statusMsg = `📊 *Status Bot*\n\n` +
-        `WhatsApp: ${isConnected ? '✅ Connected' : '❌ Disconnected'}\n` +
+    const statusMsg = `*Status Bot*\n\n` +
+        `WhatsApp: ${isConnected ? 'Connected' : 'Disconnected'}\n` +
         `State: ${waState}\n` +
         `Active Messages: ${messageCache.keys().length}\n` +
         `Total Forwarded: ${messageCounter}`;
@@ -324,10 +324,9 @@ bot.command('list', async (ctx) => {
         const data = messageCache.get(key);
         if (data) {
             const timeAgo = Math.floor((Date.now() - data.timestamp) / 60000); // menit
-            listMsg += `🆔 \`${key}\`\n`;
-            listMsg += `👤 ${data.contactName}\n`;
-            listMsg += `⏰ ${timeAgo} menit lalu\n`;
-            listMsg += `─────────────\n`;
+            listMsg += `ID: \`${key}\`\n`;
+            listMsg += `Name: ${data.contactName}\n`;
+            listMsg += `Time: ${timeAgo} menit lalu\n\n`;
         }
     });
 
@@ -339,7 +338,7 @@ bot.command('reply', async (ctx) => {
     const args = ctx.message.text.split(' ');
     
     if (args.length < 3) {
-        return ctx.reply('❌ Format salah!\n\nGunakan: /reply <msg_id> <pesan>\nContoh: /reply msg_5 Halo, terima kasih!');
+        return ctx.reply('Format salah!\n\nGunakan: /reply <msg_id> <pesan>\nContoh: /reply msg_5 Halo, terima kasih!');
     }
 
     const msgId = args[1];
@@ -372,15 +371,15 @@ function generateContactButtons(chats, page) {
     // Navigation buttons
     const navRow = [];
     if (page > 0) {
-        navRow.push({ text: '⬅️ Prev', callback_data: `page_${page - 1}` });
+        navRow.push({ text: 'Prev', callback_data: `page_${page - 1}` });
     }
     if (end < chats.length) {
-        navRow.push({ text: 'Next ➡️', callback_data: `page_${page + 1}` });
+        navRow.push({ text: 'Next', callback_data: `page_${page + 1}` });
     }
     if (navRow.length > 0) keyboard.push(navRow);
     
     // Add manual input option
-    keyboard.push([{ text: '🔢 Input Nomor Manual', callback_data: 'manual_input' }]);
+    keyboard.push([{ text: 'Input Nomor Manual', callback_data: 'manual_input' }]);
     
     return keyboard;
 }
@@ -388,7 +387,7 @@ function generateContactButtons(chats, page) {
 // Command /send
 bot.command('send', async (ctx) => {
     try {
-        await ctx.reply('🔄 Mengambil daftar kontak...');
+        await ctx.reply('Mengambil daftar kontak...');
         
         // Get all personal chats
         const chats = await waClient.getChats();
@@ -464,7 +463,7 @@ bot.on('callback_query', async (ctx) => {
         const msgData = messageCache.get(msgId);
         
         if (!msgData) {
-            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
+            return ctx.answerCbQuery('Message expired!', { show_alert: true });
         }
         
         // Set conversation state
@@ -598,86 +597,7 @@ bot.on('callback_query', async (ctx) => {
         }
         // Contact info button
         const msgId = data.replace('info_', '');
-        const msgData = messageCache.get(msgId);
-        
-        if (!msgData) {
-            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
-        }
-        
-        // Format contact info
-        const contactInfo = `📇 *Info Kontak*\n\n` +
-            `👤 Nama: ${msgData.contactName}\n` +
-            `📞 ID: \`${msgData.contactId}\`\n` +
-            `📁 Type: ${msgData.isGroup ? 'Group' : 'Personal'}\n` +
-            `⏰ Pesan diterima: ${new Date(msgData.timestamp).toLocaleString('id-ID')}\n` +
-            `🆔 Msg ID: \`${msgId}\`\n\n` +
-            `_Gunakan /send ${msgData.contactId.replace('@c.us', '')} untuk kirim pesan baru_`;
-        
-        // Share contact button
-        const contactKeyboard = {
-            inline_keyboard: [
-                [
-                    { text: '💬 Reply', callback_data: `reply_${msgId}` },
-                    { text: '📤 Share Contact', callback_data: `share_${msgId}` }
-                ]
-            ]
-        };
-        
-        await ctx.answerCbQuery();
-        await ctx.reply(contactInfo, {
-            parse_mode: 'Markdown',
-            reply_markup: contactKeyboard
-        });
-        
-    } else if (data.startsWith('quickreply_')) {
-        // Send quick reply
-        const parts = data.replace('quickreply_', '').split('_');
-        const msgId = parts[0];
-        const replyText = parts.slice(1).join('_');
-        
-        const msgData = messageCache.get(msgId);
-        
-        if (!msgData) {
-            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
-        }
-        
-        try {
-            await waClient.sendMessage(msgData.contactId, replyText);
-            await ctx.answerCbQuery('✅ Pesan terkirim!');
-            await ctx.reply(`✅ Reply terkirim ke *${msgData.contactName}*\n💬 "${replyText}"`, {
-                parse_mode: 'Markdown'
-            });
-            console.log(`✉️ Quick reply sent to ${msgData.contactName}`);
-        } catch (error) {
-            console.error('Error sending quick reply:', error);
-            await ctx.answerCbQuery('❌ Gagal mengirim!', { show_alert: true });
-        }
-        
-    } else if (data.startsWith('custom_')) {
-        // Custom reply - instruct user to use /reply command
-        const msgId = data.replace('custom_', '');
-        const msgData = messageCache.get(msgId);
-        
-        if (!msgData) {
-            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
-        }
-        
-        await ctx.answerCbQuery();
-        await ctx.reply(`✍️ Untuk custom reply, gunakan:\n\n\`/reply ${msgId} [pesan Anda]\`\n\nContoh:\n\`/reply ${msgId} Halo, terima kasih pesannya!\``, {
-            parse_mode: 'Markdown'
-        });
-        
-    } else if (data.startsWith('share_')) {
-        // Share contact as vCard
-        const msgId = data.replace('share_', '');
-        const msgData = messageCache.get(msgId);
-        
-        if (!msgData) {
-            return ctx.answerCbQuery('❌ Message expired!', { show_alert: true });
-        }
-        
-        const phoneNumber = msgData.contactId.replace('@c.us', '');
-        const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${msgData.contactName}\nTEL;TYPE=CELL:+${phoneNumber}\nEND:VCARD`;
+        // REMOVE UNUSED INFO BLOCK FOR CLEANUP
         
         await ctx.answerCbQuery();
         await ctx.replyWithDocument({
@@ -770,9 +690,9 @@ bot.command('cancel', async (ctx) => {
     
     if (state) {
         conversationState.del(`chat_${ctx.from.id}`);
-        await ctx.reply('Reply dibatalkan.');
+        await ctx.reply('Reply dibatalkan');
     } else {
-        await ctx.reply('Tidak ada aksi yang perlu dibatalkan.');
+        await ctx.reply('Tidak ada aksi yang perlu dibatalkan');
     }
 });
 
@@ -804,7 +724,7 @@ bot.launch().then(() => {
         { command: 'help', description: 'Bantuan lengkap' }
     ]);
     
-    console.log('✅ Bot started successfully!');
-    console.log('📱 Scan QR code untuk koneksi WhatsApp');
-    console.log('💬 Kirim /start ke bot Telegram untuk mulai');
+    console.log('Bot started successfully!');
+    console.log('Scan QR code untuk koneksi WhatsApp');
+    console.log('Kirim /start ke bot Telegram untuk mulai');
 });
