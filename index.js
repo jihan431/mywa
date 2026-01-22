@@ -3,10 +3,41 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const { Telegraf } = require('telegraf');
 const qrcode = require('qrcode-terminal');
 const NodeCache = require('node-cache');
+const fs = require('fs');
+const path = require('path');
+
+// Path untuk config file
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+
+// Load atau create config
+let config = {
+    telegram_chat_id: null,
+    auto_reply: {
+        enabled: false,
+        message: ''
+    }
+};
+
+if (fs.existsSync(CONFIG_FILE)) {
+    try {
+        config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    } catch (error) {
+        console.error('Error loading config:', error.message);
+    }
+}
+
+// Save config function
+function saveConfig() {
+    try {
+        fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+    } catch (error) {
+        console.error('Error saving config:', error.message);
+    }
+}
 
 // Konfigurasi
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-let TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || null;
+let TELEGRAM_CHAT_ID = config.telegram_chat_id || process.env.TELEGRAM_CHAT_ID || null;
 
 // Cache untuk mapping message ID ke contact
 const messageCache = new NodeCache({ stdTTL: 86400 }); // 24 jam
@@ -63,6 +94,16 @@ waClient.on('message', async (msg) => {
     try {
         // Skip messages dari diri sendiri
         if (msg.fromMe) return;
+        
+        // Auto reply jika enabled
+        if (config.auto_reply.enabled && config.auto_reply.message) {
+            try {
+                await waClient.sendMessage(msg.from, config.auto_reply.message, { sendSeen: false });
+                console.log(`Auto-reply sent to ${msg.from}`);
+            } catch (error) {
+                console.error('Error sending auto-reply:', error.message);
+            }
+        }
 
         // Dapatkan info contact
         const contact = await msg.getContact();
@@ -185,10 +226,12 @@ async function replyToWhatsApp(msgId, replyText, ctx) {
 
 // Command /start
 bot.command('start', async (ctx) => {
-    // Set chat ID otomatis
-    if (!TELEGRAM_CHAT_ID) {
+    // Set chat ID otomatis dan simpan ke config
+    if (!TELEGRAM_CHAT_ID || TELEGRAM_CHAT_ID !== ctx.chat.id) {
         TELEGRAM_CHAT_ID = ctx.chat.id;
-        console.log(`✅ Telegram Chat ID set to: ${TELEGRAM_CHAT_ID}`);
+        config.telegram_chat_id = ctx.chat.id;
+        saveConfig();
+        console.log(`Telegram Chat ID saved to config: ${TELEGRAM_CHAT_ID}`);
     }
 
     const welcomeMsg = `*WhatsApp-Telegram Bridge*\n\n` +
@@ -317,6 +360,48 @@ bot.command('send', async (ctx) => {
     } catch (error) {
         console.error('Error sending message:', error);
         await ctx.reply('Gagal mengirim pesan. Pastikan nomor dalam format 628xxx');
+    }
+});
+
+// Command /auto - Set auto reply
+bot.command('auto', async (ctx) => {
+    const args = ctx.message.text.split(' ');
+    
+    if (args.length < 2) {
+        return ctx.reply('Format salah!\n\nGunakan: /auto <pesan auto reply>\n\nContoh: /auto Maaf sedang sibuk, akan dibalas nanti');
+    }
+    
+    const autoReplyMessage = args.slice(1).join(' ');
+    
+    config.auto_reply.enabled = true;
+    config.auto_reply.message = autoReplyMessage;
+    saveConfig();
+    
+    await ctx.reply(`Auto reply diaktifkan\n\nPesan: "${autoReplyMessage}"\n\nSemua pesan WhatsApp masuk akan otomatis dibalas dengan pesan ini.`, {
+        parse_mode: 'Markdown'
+    });
+});
+
+// Command /stopauto - Stop auto reply
+bot.command('stopauto', async (ctx) => {
+    if (!config.auto_reply.enabled) {
+        return ctx.reply('Auto reply sudah tidak aktif');
+    }
+    
+    config.auto_reply.enabled = false;
+    saveConfig();
+    
+    await ctx.reply('Auto reply dinonaktifkan');
+});
+
+// Command /statusauto - Check auto reply status
+bot.command('statusauto', async (ctx) => {
+    if (config.auto_reply.enabled) {
+        await ctx.reply(`Auto reply: AKTIF\n\nPesan: "${config.auto_reply.message}"`, {
+            parse_mode: 'Markdown'
+        });
+    } else {
+        await ctx.reply('Auto reply: TIDAK AKTIF');
     }
 });
 
@@ -572,6 +657,9 @@ bot.launch().then(() => {
         { command: 'list', description: 'Lihat 10 pesan terakhir' },
         { command: 'send', description: 'Kirim pesan baru ke nomor WA' },
         { command: 'reply', description: 'Balas pesan dengan msg_id' },
+        { command: 'auto', description: 'Aktifkan auto reply' },
+        { command: 'stopauto', description: 'Nonaktifkan auto reply' },
+        { command: 'statusauto', description: 'Cek status auto reply' },
         { command: 'cancel', description: 'Batalkan reply yang sedang berjalan' },
         { command: 'help', description: 'Bantuan lengkap' }
     ]);
