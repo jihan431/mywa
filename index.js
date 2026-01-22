@@ -101,13 +101,22 @@ waClient.on('message', async (msg) => {
 
         // Auto reply jika enabled DAN bukan group
         if (config.auto_reply.enabled && config.auto_reply.message && !chat.isGroup) {
-            try {
-                // Add [Auto Reply] tag
-                const autoReplyText = `[Auto Reply]\n${config.auto_reply.message}`;
-                await waClient.sendMessage(msg.from, autoReplyText, { sendSeen: false });
-                console.log(`Auto-reply sent to ${msg.from}`);
-            } catch (error) {
-                console.error('Error sending auto-reply:', error.message);
+            const lastReply = autoReplyCooldown.get(msg.from) || 0;
+            const now = Date.now();
+            
+            // Cooldown 1 detik per contact
+            if (now - lastReply > 1000) {
+                try {
+                    // Add [Auto Reply] tag
+                    const autoReplyText = `[Auto Reply]\n${config.auto_reply.message}`;
+                    await waClient.sendMessage(msg.from, autoReplyText, { sendSeen: false });
+                    console.log(`Auto-reply sent to ${msg.from}`);
+                    
+                    // Update last reply time
+                    autoReplyCooldown.set(msg.from, now);
+                } catch (error) {
+                    console.error('Error sending auto-reply:', error.message);
+                }
             }
         }
 
@@ -127,8 +136,8 @@ waClient.on('message', async (msg) => {
             timestamp: Date.now()
         });
 
-        // Format pesan untuk Telegram - clean modern style
-        let telegramMessage = `*${chatName}*\n${msg.body || '[Media/File]'}`;
+        // Format pesan untuk Telegram - clean modern style dengan jarak paragraph
+        let telegramMessage = `*${chatName}*\n\n${msg.body || '[Media/File]'}`;
 
         if (!TELEGRAM_CHAT_ID) {
             console.log('⚠️ TELEGRAM_CHAT_ID belum diset. Gunakan /start di bot Telegram.');
