@@ -124,10 +124,8 @@ waClient.on('message', async (msg) => {
             timestamp: Date.now()
         });
 
-        // Format pesan untuk Telegram - clean tanpa emoji dan msg_id
-        let telegramMessage = `*${chatName}*\n`;
-        telegramMessage += `─────────────────\n`;
-        telegramMessage += msg.body || '[Media/File]';
+        // Format pesan untuk Telegram - clean modern style
+        let telegramMessage = `*${chatName}*\n${msg.body || '[Media/File]'}`;
 
         if (!TELEGRAM_CHAT_ID) {
             console.log('⚠️ TELEGRAM_CHAT_ID belum diset. Gunakan /start di bot Telegram.');
