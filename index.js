@@ -111,7 +111,7 @@ waClient.on('message', async (msg) => {
             }
         }
 
-        const contactName = contact.pushname || contact.name || contact.number;
+        const contactName = contact.name || contact.pushname || contact.number;
         const isGroup = chat.isGroup;
         const chatName = isGroup ? chat.name : contactName;
 
