@@ -95,8 +95,12 @@ waClient.on('message', async (msg) => {
         // Skip messages dari diri sendiri
         if (msg.fromMe) return;
         
-        // Auto reply jika enabled
-        if (config.auto_reply.enabled && config.auto_reply.message) {
+        // Dapatkan info chat dan contact
+        const chat = await msg.getChat();
+        const contact = await msg.getContact();
+
+        // Auto reply jika enabled DAN bukan group
+        if (config.auto_reply.enabled && config.auto_reply.message && !chat.isGroup) {
             try {
                 // Add [Auto Reply] tag
                 const autoReplyText = `[Auto Reply]\n${config.auto_reply.message}`;
@@ -107,9 +111,6 @@ waClient.on('message', async (msg) => {
             }
         }
 
-        // Dapatkan info contact
-        const contact = await msg.getContact();
-        const chat = await msg.getChat();
         const contactName = contact.pushname || contact.name || contact.number;
         const isGroup = chat.isGroup;
         const chatName = isGroup ? chat.name : contactName;
