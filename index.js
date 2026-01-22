@@ -350,28 +350,47 @@ bot.command('reply', async (ctx) => {
 
 // Command /send
 bot.command('send', async (ctx) => {
-    const args = ctx.message.text.split(' ');
-    
-    if (args.length < 3) {
-        return ctx.reply('❌ Format salah!\n\nGunakan: /send <nomor> <pesan>\nContoh: /send 628123456789 Halo dari Telegram!');
-    }
-
-    const phoneNumber = args[1];
-    const messageText = args.slice(2).join(' ');
-
     try {
-        // Format nomor dengan @c.us
-        const chatId = phoneNumber.includes('@c.us') ? phoneNumber : `${phoneNumber}@c.us`;
+        await ctx.reply('🔄 Mengambil daftar chat terbaru...');
         
-        // Kirim pesan (disable read receipts to avoid errors)
-        await waClient.sendMessage(chatId, messageText, { sendSeen: false });
+        // Get recent chats
+        const chats = await waClient.getChats();
         
-        await ctx.reply('Pesan terkirim');
-        console.log(`Message sent to ${phoneNumber}`);
+        // Filter personal chats and take top 10
+        const recentChats = chats
+            .filter(chat => !chat.isGroup)
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 10);
+            
+        if (recentChats.length === 0) {
+            return ctx.reply('Belum ada riwayat chat personal.');
+        }
 
+        // Create buttons
+        const buttons = recentChats.map(chat => {
+            return {
+                text: chat.name || chat.id.user,
+                callback_data: `select_${chat.id._serialized}`
+            };
+        });
+
+        // Split into rows of 2
+        const keyboard = [];
+        for (let i = 0; i < buttons.length; i += 2) {
+            keyboard.push(buttons.slice(i, i + 2));
+        }
+        
+        // Add manual input option
+        keyboard.push([{ text: '🔢 Input Nomor Manual', callback_data: 'manual_input' }]);
+
+        await ctx.reply('Pilih kontak untuk mengirim pesan:', {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: keyboard }
+        });
+        
     } catch (error) {
-        console.error('Error sending message:', error);
-        await ctx.reply('Gagal mengirim pesan. Pastikan nomor dalam format 628xxx');
+        console.error('Error fetching chats:', error);
+        await ctx.reply('Gagal mengambil daftar chat.');
     }
 });
 
@@ -437,6 +456,41 @@ bot.on('callback_query', async (ctx) => {
         
         await ctx.answerCbQuery();
         await ctx.reply(`*Balas ke: ${msgData.contactName}*\n\nKetik pesan Anda (atau /cancel untuk batal):`, {
+            parse_mode: 'Markdown'
+        });
+        
+    } else if (data.startsWith('select_')) {
+        // Handle contact selection for /send
+        const chatId = data.replace('select_', '');
+        
+        try {
+            const chat = await waClient.getChatById(chatId);
+            const contactName = chat.name || chat.id.user;
+            
+            // Set conversation state
+            conversationState.set(`chat_${ctx.from.id}`, {
+                mode: 'waiting_send',
+                chatId: chatId,
+                contactName: contactName
+            });
+            
+            await ctx.answerCbQuery();
+            await ctx.reply(`*Kirim pesan ke: ${contactName}*\n\nKetik pesan Anda (atau /cancel untuk batal):`, {
+                parse_mode: 'Markdown'
+            });
+        } catch (error) {
+            console.error('Error getting chat:', error);
+            ctx.reply('Gagal memproses kontak.');
+        }
+        
+    } else if (data === 'manual_input') {
+        // Handle manual input selection
+        conversationState.set(`chat_${ctx.from.id}`, {
+            mode: 'waiting_number'
+        });
+        
+        await ctx.answerCbQuery();
+        await ctx.reply(`*Input Nomor Manual*\n\nKetik nomor tujuan (format: 628xxx):`, {
             parse_mode: 'Markdown'
         });
         
@@ -601,15 +655,17 @@ bot.on('text', async (ctx) => {
     // Check if user is in conversation mode
     const state = conversationState.get(`chat_${ctx.from.id}`);
     
-    if (state && state.mode === 'waiting_reply') {
+    if (!state) return; // Exit if no state
+
+    // Mode: Reply to message
+    if (state.mode === 'waiting_reply') {
         const msgData = messageCache.get(state.msgId);
         
         if (!msgData) {
             conversationState.del(`chat_${ctx.from.id}`);
-            return ctx.reply('❌ Pesan sudah expired.');
+            return ctx.reply('Pesan sudah expired.');
         }
         
-        // Get user's message
         const replyText = ctx.message.text;
         
         try {
@@ -629,6 +685,43 @@ bot.on('text', async (ctx) => {
         
         // Clear conversation state
         conversationState.del(`chat_${ctx.from.id}`);
+        
+    // Mode: Send new message
+    } else if (state.mode === 'waiting_send') {
+        const replyText = ctx.message.text;
+        
+        try {
+            await waClient.sendMessage(state.chatId, replyText, { sendSeen: false });
+            await ctx.reply('Pesan terkirim');
+            console.log(`Message sent to ${state.contactName}`);
+        } catch (error) {
+            console.error('Error sending message:', error.message);
+            await ctx.reply('Gagal mengirim pesan');
+        }
+        
+        conversationState.del(`chat_${ctx.from.id}`);
+        
+    // Mode: Waiting for manual number
+    } else if (state.mode === 'waiting_number') {
+        let phoneNumber = ctx.message.text.replace(/[^0-9]/g, '');
+        
+        // Basic validation
+        if (phoneNumber.startsWith('0')) {
+            phoneNumber = '62' + phoneNumber.slice(1);
+        }
+        
+        const chatId = `${phoneNumber}@c.us`;
+        
+        // Set state to waiting for message content
+        conversationState.set(`chat_${ctx.from.id}`, {
+            mode: 'waiting_send',
+            chatId: chatId,
+            contactName: phoneNumber
+        });
+        
+        await ctx.reply(`*Nomor: ${phoneNumber}*\n\nSekarang ketik pesan Anda:`, {
+            parse_mode: 'Markdown'
+        });
     }
 });
 
