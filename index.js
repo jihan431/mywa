@@ -348,42 +348,62 @@ bot.command('reply', async (ctx) => {
     await replyToWhatsApp(msgId, replyText, ctx);
 });
 
+// Helper to generate contact buttons
+function generateContactButtons(chats, page) {
+    const itemsPerPage = 8;
+    const start = page * itemsPerPage;
+    const end = start + itemsPerPage;
+    const currentChats = chats.slice(start, end);
+    
+    // Create buttons
+    const buttons = currentChats.map(chat => {
+        return {
+            text: chat.name || chat.id.user,
+            callback_data: `select_${chat.id._serialized}`
+        };
+    });
+
+    // Split into rows of 2
+    const keyboard = [];
+    for (let i = 0; i < buttons.length; i += 2) {
+        keyboard.push(buttons.slice(i, i + 2));
+    }
+    
+    // Navigation buttons
+    const navRow = [];
+    if (page > 0) {
+        navRow.push({ text: '⬅️ Prev', callback_data: `page_${page - 1}` });
+    }
+    if (end < chats.length) {
+        navRow.push({ text: 'Next ➡️', callback_data: `page_${page + 1}` });
+    }
+    if (navRow.length > 0) keyboard.push(navRow);
+    
+    // Add manual input option
+    keyboard.push([{ text: '🔢 Input Nomor Manual', callback_data: 'manual_input' }]);
+    
+    return keyboard;
+}
+
 // Command /send
 bot.command('send', async (ctx) => {
     try {
-        await ctx.reply('🔄 Mengambil daftar chat terbaru...');
+        await ctx.reply('🔄 Mengambil daftar kontak...');
         
-        // Get recent chats
+        // Get all personal chats
         const chats = await waClient.getChats();
-        
-        // Filter personal chats and take top 10
-        const recentChats = chats
+        const personalChats = chats
             .filter(chat => !chat.isGroup)
-            .sort((a, b) => b.timestamp - a.timestamp)
-            .slice(0, 10);
+            .sort((a, b) => b.timestamp - a.timestamp);
             
-        if (recentChats.length === 0) {
+        if (personalChats.length === 0) {
             return ctx.reply('Belum ada riwayat chat personal.');
         }
 
-        // Create buttons
-        const buttons = recentChats.map(chat => {
-            return {
-                text: chat.name || chat.id.user,
-                callback_data: `select_${chat.id._serialized}`
-            };
-        });
+        // Generate buttons for page 0
+        const keyboard = generateContactButtons(personalChats, 0);
 
-        // Split into rows of 2
-        const keyboard = [];
-        for (let i = 0; i < buttons.length; i += 2) {
-            keyboard.push(buttons.slice(i, i + 2));
-        }
-        
-        // Add manual input option
-        keyboard.push([{ text: '🔢 Input Nomor Manual', callback_data: 'manual_input' }]);
-
-        await ctx.reply('Pilih kontak untuk mengirim pesan:', {
+        await ctx.reply(`Pilih kontak (Total: ${personalChats.length}):`, {
             parse_mode: 'Markdown',
             reply_markup: { inline_keyboard: keyboard }
         });
@@ -483,6 +503,25 @@ bot.on('callback_query', async (ctx) => {
             ctx.reply('Gagal memproses kontak.');
         }
         
+    } else if (data.startsWith('page_')) {
+        // Handle pagination
+        const page = parseInt(data.replace('page_', ''));
+        
+        try {
+            // Get chats again (stateless pagination)
+            const chats = await waClient.getChats();
+            const personalChats = chats
+                .filter(chat => !chat.isGroup)
+                .sort((a, b) => b.timestamp - a.timestamp);
+                
+            const keyboard = generateContactButtons(personalChats, page);
+            
+            await ctx.editMessageReplyMarkup({ inline_keyboard: keyboard });
+        } catch (error) {
+            console.error('Error pagination:', error);
+            ctx.answerCbQuery('Gagal memuat halaman.');
+        }
+
     } else if (data === 'manual_input') {
         // Handle manual input selection
         conversationState.set(`chat_${ctx.from.id}`, {
