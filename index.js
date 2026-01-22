@@ -571,9 +571,31 @@ bot.on('callback_query', async (ctx) => {
             await ctx.reply(listMsg, { parse_mode: 'Markdown' });
             
         } else if (data === 'cmd_send') {
-            await ctx.reply('*Kirim Pesan Baru*\n\nFormat: `/send <nomor> <pesan>`\n\nContoh:\n`/send 628123456789 Halo dari Telegram!`', {
-                parse_mode: 'Markdown'
-            });
+            try {
+                await ctx.answerCbQuery('Mengambil daftar kontak...');
+                
+                // Get all personal chats
+                const chats = await waClient.getChats();
+                const personalChats = chats
+                    .filter(chat => !chat.isGroup)
+                    .sort((a, b) => b.timestamp - a.timestamp);
+                    
+                if (personalChats.length === 0) {
+                    return ctx.reply('Belum ada riwayat chat personal.');
+                }
+
+                // Generate buttons for page 0
+                const keyboard = generateContactButtons(personalChats, 0);
+
+                await ctx.reply(`Pilih kontak (Total: ${personalChats.length}):`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: keyboard }
+                });
+                
+            } catch (error) {
+                console.error('Error fetching chats:', error);
+                await ctx.reply('Gagal mengambil daftar chat.');
+            }
             
         } else if (data === 'cmd_help') {
             const helpMsg = `*Bantuan Bot*\n\n` +
