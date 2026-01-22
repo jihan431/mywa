@@ -168,8 +168,8 @@ async function replyToWhatsApp(msgId, replyText, ctx) {
             return ctx.reply('❌ Message ID tidak ditemukan atau sudah expired.\nGunakan /list untuk melihat pesan terbaru.');
         }
 
-        // Kirim pesan ke WhatsApp
-        await waClient.sendMessage(msgData.contactId, replyText);
+        // Kirim pesan ke WhatsApp (disable read receipts to avoid errors)
+        await waClient.sendMessage(msgData.contactId, replyText, { sendSeen: false });
         
         await ctx.reply(`✅ Pesan berhasil dikirim ke:\n👤 ${msgData.contactName}\n📞 ${msgData.contactId}\n\n💬 Pesan: ${replyText}`, {
             parse_mode: 'Markdown'
@@ -308,8 +308,8 @@ bot.command('send', async (ctx) => {
         // Format nomor dengan @c.us
         const chatId = phoneNumber.includes('@c.us') ? phoneNumber : `${phoneNumber}@c.us`;
         
-        // Kirim pesan
-        await waClient.sendMessage(chatId, messageText);
+        // Kirim pesan (disable read receipts to avoid errors)
+        await waClient.sendMessage(chatId, messageText, { sendSeen: false });
         
         await ctx.reply(`✅ Pesan berhasil dikirim ke:\n📞 ${phoneNumber}\n\n💬 Pesan: ${messageText}`);
         console.log(`✉️ Message sent to ${phoneNumber}`);
@@ -520,8 +520,8 @@ bot.on('text', async (ctx) => {
         const replyText = ctx.message.text;
         
         try {
-            // Send to WhatsApp
-            await waClient.sendMessage(msgData.contactId, replyText);
+            // Send to WhatsApp (disable read receipts to avoid errors)
+            await waClient.sendMessage(msgData.contactId, replyText, { sendSeen: false });
             
             await ctx.reply(`Pesan terkirim ke *${msgData.contactName}*\n\n"${replyText}"`, {
                 parse_mode: 'Markdown'
