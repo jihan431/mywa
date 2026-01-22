@@ -171,15 +171,15 @@ async function replyToWhatsApp(msgId, replyText, ctx) {
         // Kirim pesan ke WhatsApp (disable read receipts to avoid errors)
         await waClient.sendMessage(msgData.contactId, replyText, { sendSeen: false });
         
-        await ctx.reply(`✅ Pesan berhasil dikirim ke:\n👤 ${msgData.contactName}\n📞 ${msgData.contactId}\n\n💬 Pesan: ${replyText}`, {
+        await ctx.reply('Pesan terkirim', {
             parse_mode: 'Markdown'
         });
 
-        console.log(`✉️ Reply sent to ${msgData.contactName}`);
+        console.log(`Reply sent to ${msgData.contactName}`);
 
     } catch (error) {
         console.error('Error sending reply:', error.message);
-        await ctx.reply('❌ Gagal mengirim pesan. Pastikan WhatsApp masih terhubung.');
+        await ctx.reply('Gagal mengirim pesan');
     }
 }
 
@@ -311,12 +311,12 @@ bot.command('send', async (ctx) => {
         // Kirim pesan (disable read receipts to avoid errors)
         await waClient.sendMessage(chatId, messageText, { sendSeen: false });
         
-        await ctx.reply(`✅ Pesan berhasil dikirim ke:\n📞 ${phoneNumber}\n\n💬 Pesan: ${messageText}`);
-        console.log(`✉️ Message sent to ${phoneNumber}`);
+        await ctx.reply('Pesan terkirim');
+        console.log(`Message sent to ${phoneNumber}`);
 
     } catch (error) {
         console.error('Error sending message:', error);
-        await ctx.reply('❌ Gagal mengirim pesan.\n\nPastikan:\n• Nomor dalam format internasional (628xxx)\n• WhatsApp terhubung\n• Nomor valid');
+        await ctx.reply('Gagal mengirim pesan. Pastikan nomor dalam format 628xxx');
     }
 });
 
@@ -523,15 +523,15 @@ bot.on('text', async (ctx) => {
             // Send to WhatsApp (disable read receipts to avoid errors)
             await waClient.sendMessage(msgData.contactId, replyText, { sendSeen: false });
             
-            await ctx.reply(`Pesan terkirim ke *${msgData.contactName}*\n\n"${replyText}"`, {
+            await ctx.reply('Pesan terkirim', {
                 parse_mode: 'Markdown'
             });
             
-            console.log(`✉️ Reply sent to ${msgData.contactName}`);
+            console.log(`Reply sent to ${msgData.contactName}`);
             
         } catch (error) {
             console.error('Error sending message:', error.message);
-            await ctx.reply('❌ Gagal mengirim pesan.');
+            await ctx.reply('Gagal mengirim pesan');
         }
         
         // Clear conversation state
@@ -564,21 +564,19 @@ console.log('🚀 Starting WhatsApp-Telegram Bridge Bot...');
 waClient.initialize();
 
 // Start Telegram bot
-bot.launch();
-
-// Graceful shutdown
-process.once('SIGINT', () => {
-    console.log('⏹️ Stopping bot...');
-    bot.stop('SIGINT');
-    waClient.destroy();
+bot.launch().then(() => {
+    // Set command list untuk autocomplete saat ketik /
+    bot.telegram.setMyCommands([
+        { command: 'start', description: 'Mulai bot dan lihat menu' },
+        { command: 'status', description: 'Cek status koneksi WhatsApp' },
+        { command: 'list', description: 'Lihat 10 pesan terakhir' },
+        { command: 'send', description: 'Kirim pesan baru ke nomor WA' },
+        { command: 'reply', description: 'Balas pesan dengan msg_id' },
+        { command: 'cancel', description: 'Batalkan reply yang sedang berjalan' },
+        { command: 'help', description: 'Bantuan lengkap' }
+    ]);
+    
+    console.log('✅ Bot started successfully!');
+    console.log('📱 Scan QR code untuk koneksi WhatsApp');
+    console.log('💬 Kirim /start ke bot Telegram untuk mulai');
 });
-
-process.once('SIGTERM', () => {
-    console.log('⏹️ Stopping bot...');
-    bot.stop('SIGTERM');
-    waClient.destroy();
-});
-
-console.log('✅ Bot started successfully!');
-console.log('📱 Scan QR code untuk koneksi WhatsApp');
-console.log('💬 Kirim /start ke bot Telegram untuk mulai');
