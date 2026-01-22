@@ -617,17 +617,7 @@ bot.on('callback_query', async (ctx) => {
             
             await ctx.reply(helpMsg, { parse_mode: 'Markdown' });
         }
-        // Contact info button
-        const msgId = data.replace('info_', '');
-        // REMOVE UNUSED INFO BLOCK FOR CLEANUP
-        
-        await ctx.answerCbQuery();
-        await ctx.replyWithDocument({
-            source: Buffer.from(vcard),
-            filename: `${msgData.contactName}.vcf`
-        }, {
-            caption: `📇 Contact: ${msgData.contactName}\n📞 +${phoneNumber}`
-        });
+
     }
 });
 
