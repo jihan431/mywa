@@ -83,9 +83,8 @@ waClient.on('message', async (msg) => {
             timestamp: Date.now()
         });
 
-        // Format pesan untuk Telegram - SIMPLE VERSION
-        let telegramMessage = `📨 *${chatName}*\n`;
-        telegramMessage += `🆔 \`${msgId}\`\n`;
+        // Format pesan untuk Telegram - clean tanpa emoji dan msg_id
+        let telegramMessage = `*${chatName}*\n`;
         telegramMessage += `─────────────────\n`;
         telegramMessage += msg.body || '[Media/File]';
 
@@ -94,11 +93,11 @@ waClient.on('message', async (msg) => {
             return;
         }
 
-        // Inline keyboard - cuma tombol Balas
+        // Inline keyboard - cuma tombol Balas (no emoji)
         const keyboard = {
             inline_keyboard: [
                 [
-                    { text: '💬 Balas', callback_data: `reply_${msgId}` }
+                    { text: 'Balas', callback_data: `reply_${msgId}` }
                 ]
             ]
         };
@@ -122,26 +121,26 @@ waClient.on('message', async (msg) => {
                         await bot.telegram.sendPhoto(TELEGRAM_CHAT_ID, {
                             source: buffer
                         }, {
-                            caption: `📷 ${chatName} | ${msgId}`
+                            caption: `${chatName}`
                         });
                     } else if (media.mimetype.startsWith('video/')) {
                         await bot.telegram.sendVideo(TELEGRAM_CHAT_ID, {
                             source: buffer
                         }, {
-                            caption: `🎥 ${chatName} | ${msgId}`
+                            caption: `${chatName}`
                         });
                     } else if (media.mimetype.startsWith('audio/')) {
                         await bot.telegram.sendAudio(TELEGRAM_CHAT_ID, {
                             source: buffer
                         }, {
-                            caption: `🎵 ${chatName} | ${msgId}`
+                            caption: `${chatName}`
                         });
                     } else {
                         await bot.telegram.sendDocument(TELEGRAM_CHAT_ID, {
                             source: buffer,
                             filename: media.filename || 'file'
                         }, {
-                            caption: `📎 ${chatName} | ${msgId}`
+                            caption: `${chatName}`
                         });
                     }
                 }
@@ -192,21 +191,21 @@ bot.command('start', async (ctx) => {
         console.log(`✅ Telegram Chat ID set to: ${TELEGRAM_CHAT_ID}`);
     }
 
-    const welcomeMsg = `🤖 *WhatsApp-Telegram Bridge*\n\n` +
+    const welcomeMsg = `*WhatsApp-Telegram Bridge*\n\n` +
         `Bot ini auto-forward semua pesan WhatsApp ke sini.\n` +
         `Klik tombol di bawah untuk quick access:`;
     
     const keyboard = {
         inline_keyboard: [
             [
-                { text: '📊 Status', callback_data: 'cmd_status' },
-                { text: '📋 Pesan Terakhir', callback_data: 'cmd_list' }
+                { text: 'Status', callback_data: 'cmd_status' },
+                { text: 'Pesan Terakhir', callback_data: 'cmd_list' }
             ],
             [
-                { text: '📤 Kirim Pesan Baru', callback_data: 'cmd_send' }
+                { text: 'Kirim Pesan Baru', callback_data: 'cmd_send' }
             ],
             [
-                { text: '❓ Bantuan', callback_data: 'cmd_help' }
+                { text: 'Bantuan', callback_data: 'cmd_help' }
             ]
         ]
     };
@@ -344,7 +343,7 @@ bot.on('callback_query', async (ctx) => {
         });
         
         await ctx.answerCbQuery();
-        await ctx.reply(`💬 *Balas ke: ${msgData.contactName}*\n\n✍️ Ketik pesan Anda (atau /cancel untuk batal):`, {
+        await ctx.reply(`*Balas ke: ${msgData.contactName}*\n\nKetik pesan Anda (atau /cancel untuk batal):`, {
             parse_mode: 'Markdown'
         });
         
@@ -356,8 +355,8 @@ bot.on('callback_query', async (ctx) => {
             const waState = await waClient.getState();
             const isConnected = waState === 'CONNECTED';
             
-            const statusMsg = `📊 *Status Bot*\n\n` +
-                `WhatsApp: ${isConnected ? '✅ Connected' : '❌ Disconnected'}\n` +
+            const statusMsg = `*Status Bot*\n\n` +
+                `WhatsApp: ${isConnected ? 'Connected' : 'Disconnected'}\n` +
                 `State: ${waState}\n` +
                 `Active Messages: ${messageCache.keys().length}\n` +
                 `Total Forwarded: ${messageCounter}`;
@@ -368,19 +367,18 @@ bot.on('callback_query', async (ctx) => {
             const allKeys = messageCache.keys();
             
             if (allKeys.length === 0) {
-                return ctx.reply('📭 Belum ada pesan yang tersimpan.');
+                return ctx.reply('Belum ada pesan yang tersimpan.');
             }
 
             const recentKeys = allKeys.slice(-10).reverse();
-            let listMsg = `📋 *10 Pesan Terakhir:*\n\n`;
+            let listMsg = `*10 Pesan Terakhir:*\n\n`;
 
             recentKeys.forEach((key) => {
                 const data = messageCache.get(key);
                 if (data) {
                     const timeAgo = Math.floor((Date.now() - data.timestamp) / 60000);
-                    listMsg += `🆔 \`${key}\`\n`;
-                    listMsg += `👤 ${data.contactName}\n`;
-                    listMsg += `⏰ ${timeAgo} menit lalu\n`;
+                    listMsg += `${data.contactName}\n`;
+                    listMsg += `${timeAgo} menit lalu\n`;
                     listMsg += `─────────────\n`;
                 }
             });
@@ -388,20 +386,20 @@ bot.on('callback_query', async (ctx) => {
             await ctx.reply(listMsg, { parse_mode: 'Markdown' });
             
         } else if (data === 'cmd_send') {
-            await ctx.reply('📤 *Kirim Pesan Baru*\n\nFormat: `/send <nomor> <pesan>`\n\nContoh:\n`/send 628123456789 Halo dari Telegram!`', {
+            await ctx.reply('*Kirim Pesan Baru*\n\nFormat: `/send <nomor> <pesan>`\n\nContoh:\n`/send 628123456789 Halo dari Telegram!`', {
                 parse_mode: 'Markdown'
             });
             
         } else if (data === 'cmd_help') {
-            const helpMsg = `📖 *Bantuan Bot*\n\n` +
-                `*Fitur Utama:*\n` +
-                `• Auto-forward pesan WA → Telegram\n` +
+            const helpMsg = `*Bantuan Bot*\n\n` +
+                `*Fitur:*\n` +
+                `• Auto-forward pesan WA ke Telegram\n` +
                 `• Balas pesan dengan 1 klik\n` +
                 `• Support media (foto, video, file)\n\n` +
                 `*Cara Balas:*\n` +
-                `1. Klik tombol 💬 *Balas*\n` +
+                `1. Klik tombol *Balas*\n` +
                 `2. Ketik pesan Anda\n` +
-                `3. Pesan otomatis terkirim!\n\n` +
+                `3. Pesan otomatis terkirim\n\n` +
                 `*Commands:*\n` +
                 `/status - Cek status WA\n` +
                 `/list - Pesan terakhir\n` +
@@ -525,7 +523,7 @@ bot.on('text', async (ctx) => {
             // Send to WhatsApp
             await waClient.sendMessage(msgData.contactId, replyText);
             
-            await ctx.reply(`✅ Pesan terkirim ke *${msgData.contactName}*\n\n💬 "${replyText}"`, {
+            await ctx.reply(`Pesan terkirim ke *${msgData.contactName}*\n\n"${replyText}"`, {
                 parse_mode: 'Markdown'
             });
             
@@ -547,7 +545,7 @@ bot.command('cancel', async (ctx) => {
     
     if (state) {
         conversationState.del(`chat_${ctx.from.id}`);
-        await ctx.reply('✅ Reply dibatalkan.');
+        await ctx.reply('Reply dibatalkan.');
     } else {
         await ctx.reply('Tidak ada aksi yang perlu dibatalkan.');
     }
